@@ -1,0 +1,150 @@
+version: "3.9"
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    hostname: postgres
+    environment:
+      POSTGRES_DB: "otusdb"
+      POSTGRES_USER: "otususer"
+      POSTGRES_PASSWORD: "otuspassword"
+    volumes:
+      - ./dump:/docker-entrypoint-initdb.d
+      - otusdb-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otususer -d otusdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - otus-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.22.0-p0
+    container_name: pgbouncer
+    hostname: pgbouncer
+    environment:
+      DB_USER: otususer
+      DB_PASSWORD: otuspassword
+      DB_HOST: postgres
+      DB_NAME: otusdb
+      POOL_MODE: transaction
+      ADMIN_USERS: otususer
+      AUTH_TYPE: "scram-sha-256"
+      MAX_CLIENT_CONN: 10000
+      DEFAULT_POOL_SIZE: 100
+      IGNORE_STARTUP_PARAMETERS: "extra_float_digits"
+    ports:
+      - "6432:5432"
+    restart: unless-stopped
+    networks:
+      - otus-network
+    depends_on:
+      - postgres
+
+  pgadmin:
+    container_name: pgadmin
+    hostname: pgadmin
+    image: dpage/pgadmin4:8
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "example@otus.ru"
+      PGADMIN_DEFAULT_PASSWORD: "examplepassword"
+      PGADMIN_CONFIG_SERVER_MODE: "True"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json 
+      - ./pgadmin/pgpass:/pgadmin4/pgpass
+    ports:
+      - 5050:80
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    networks:
+      - otus-network
+    depends_on:
+      - postgres
+
+  postgres_exporter:
+    container_name: exporter
+    hostname: exporter
+    image: prometheuscommunity/postgres-exporter:v0.10.1
+    environment:
+      DATA_SOURCE_URI: "postgres:5432/otusdb?sslmode=disable"
+      DATA_SOURCE_USER: "otususer"
+      DATA_SOURCE_PASS: "otuspassword"
+      PG_EXPORTER_EXTEND_QUERY_PATH: "/etc/postgres_exporter/queries.yaml"
+    volumes:
+      - ./pgexporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
+    ports:
+      - 9187:9187
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 500M
+    networks:
+      - otus-network
+    depends_on:
+      - postgres
+
+  prometheus:
+    image: prom/prometheus:v2.51.1
+    container_name: prometheus
+    hostname: prometheus
+    volumes:
+      - prometheus-data:/etc/prometheus/
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Moscow"
+    networks:
+      - otus-network
+    depends_on:
+      - postgres_exporter
+
+  grafana:
+    image: grafana/grafana:10.1.9
+    container_name: grafana
+    hostname: grafana
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning/
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "password"
+      TZ: "Europe/Moscow"
+    depends_on:
+      - prometheus
+    networks:
+      - otus-network
+
+
+volumes:
+  grafana-data:
+  prometheus-data:
+  otusdb-data:
+  pgadmin-data:
+
+networks:
+  otus-network:
+    driver: bridge

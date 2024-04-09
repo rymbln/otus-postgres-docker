@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    hostname: postgres
+    environment:
+      POSTGRES_DB: "otusdb"
+      POSTGRES_USER: "otususer"
+      POSTGRES_PASSWORD: "otuspassword"
+    volumes:
+      - ./dump:/docker-entrypoint-initdb.d
+      - otusdb-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otususer -d otusdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+
+volumes:
+    otusdb-data:

@@ -1,0 +1,65 @@
+version: "3.9"
+services:
+  pg-1:
+    container_name: postgres_1
+    image: docker.io/bitnami/postgresql-repmgr:15
+    ports:
+      - "6432:5432"
+    volumes:
+      - pg_1_data:/bitnami/postgresql
+      - ./init-bitnami:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRESQL_POSTGRES_PASSWORD=adminotuspassword
+      - POSTGRESQL_USERNAME=otususer
+      - POSTGRESQL_PASSWORD=otuspassword
+      - POSTGRESQL_DATABASE=otusdb
+      - REPMGR_PASSWORD=repmgrpassword
+      - REPMGR_PRIMARY_HOST=pg-1
+      - REPMGR_PRIMARY_PORT=5432
+      - REPMGR_PARTNER_NODES=pg-1,pg-2:5432
+      - REPMGR_NODE_NAME=pg-1
+      - REPMGR_NODE_NETWORK_NAME=pg-1
+      - REPMGR_PORT_NUMBER=5432
+      - REPMGR_CONNECT_TIMEOUT=1
+      - REPMGR_RECONNECT_ATTEMPTS=2
+      - REPMGR_RECONNECT_INTERVAL=1
+      - REPMGR_MASTER_RESPONSE_TIMEOUT=5
+    restart: unless-stopped
+    networks:
+      - postgres-repl
+
+  pg-2:
+    container_name: postgres_2
+    image: docker.io/bitnami/postgresql-repmgr:15
+    ports:
+      - "6433:5432"
+    volumes:
+      - pg_2_data:/bitnami/postgresql
+      - ./create_extensions.sql:/docker-entrypoint-initdb.d/create_extensions.sql:ro
+    environment:
+      - POSTGRESQL_POSTGRES_PASSWORD=adminotuspassword
+      - POSTGRESQL_USERNAME=otususer
+      - POSTGRESQL_PASSWORD=otuspassword
+      - POSTGRESQL_DATABASE=otusdb
+      - REPMGR_PASSWORD=repmgrpassword
+      - REPMGR_PRIMARY_HOST=pg-1
+      - REPMGR_PRIMARY_PORT=5432
+      - REPMGR_PARTNER_NODES=pg-1,pg-2:5432
+      - REPMGR_NODE_NAME=pg-2
+      - REPMGR_NODE_NETWORK_NAME=pg-2
+      - REPMGR_PORT_NUMBER=5432
+      - REPMGR_CONNECT_TIMEOUT=1
+      - REPMGR_RECONNECT_ATTEMPTS=2
+      - REPMGR_RECONNECT_INTERVAL=1
+      - REPMGR_MASTER_RESPONSE_TIMEOUT=5
+    restart: unless-stopped
+    networks:
+      - postgres-repl
+
+networks:
+  postgres-repl:
+    driver: bridge
+
+volumes:
+  pg_1_data:
+  pg_2_data:

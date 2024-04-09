@@ -1,0 +1,14 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "otus-postgres",
+            "Group": "Servers",
+            "Host": "postgres",
+            "Port": 5432,
+            "MaintenanceDB": "otusdb",
+            "Username": "otususer",
+            "PassFile": "/pgadmin4/pgpass",
+            "SSLMode": "prefer"
+        }
+    }
+  }

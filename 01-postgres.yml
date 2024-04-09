@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    hostname: postgres
+    environment:
+      POSTGRES_DB: "otusdb"
+      POSTGRES_USER: "otususer"
+      POSTGRES_PASSWORD: "otuspassword"
+    volumes:
+      - ./dump:/docker-entrypoint-initdb.d
+      - ./backups:/backups
+      - otusdb-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+volumes:
+  otusdb-data:
